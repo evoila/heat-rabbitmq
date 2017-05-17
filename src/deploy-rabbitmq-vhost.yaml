@@ -1,0 +1,55 @@
+heat_template_version: 2015-04-30
+description: Installs RabbitMQ VHost
+
+parameters:
+
+  server_list:
+    type: comma_delimited_list
+    description: List of server IDs
+
+  http_proxy:
+    type: string
+    description: "HTTP proxy URL"
+    default: ''
+
+  https_proxy:
+    type: string
+    description: "HTTPS proxy URL"
+    default: ''
+
+  no_proxy:
+    type: string
+    description: "Exceptions to proxy configuration"
+    default: ''
+
+  name:
+    type: string
+    description: Name of the vhost
+
+resources:
+
+  # SOFTWARE CONFIGS
+ 
+  create_vhost:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: script
+      config: { get_file: scripts/create-vhost.sh }
+      inputs:
+        - name: NAME
+
+  # SOFTWARE DEPLOYMENTS
+ 
+  deploy_create_vhost:
+    type: OS::Heat::SoftwareDeployment
+    properties:
+      config: { get_resource: create_vhost }
+      server: { get_param: [ server_list, 0 ] }
+      signal_transport: HEAT_SIGNAL
+      input_values:
+        http_proxy: { get_param: http_proxy }
+        https_proxy: { get_param: https_proxy }
+        no_proxy: { get_param: no_proxy }
+        NAME: { get_param: name }
+
+outputs:

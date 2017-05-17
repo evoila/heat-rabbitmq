@@ -1,0 +1,69 @@
+heat_template_version: 2015-04-30
+description: Installs RabbitMQ User
+
+parameters:
+
+  server_list:
+    type: comma_delimited_list
+    description: List of server IDs
+
+  http_proxy:
+    type: string
+    description: "HTTP proxy URL"
+    default: ''
+
+  https_proxy:
+    type: string
+    description: "HTTPS proxy URL"
+    default: ''
+
+  no_proxy:
+    type: string
+    description: "Exceptions to proxy configuration"
+    default: ''
+
+  name:
+    type: string
+    description: Name of the user
+
+  vhost:
+    type: string
+    description: The vhost the user will be granted access to
+
+resources:
+
+  # SOFTWARE CONFIGS
+  
+  create_user:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: script
+      config: { get_file: scripts/create-user.sh }
+      inputs:
+        - name: USERNAME
+        - name: PASSWORD
+        - name: VHOST
+
+  # SOFTWARE DEPLOYMENTS
+ 
+  password:
+    type: OS::Heat::RandomString
+
+  deploy_create_user:
+    type: OS::Heat::SoftwareDeployment
+    properties:
+      config: { get_resource: create_user }
+      server: { get_param: [ server_list, 0 ] }
+      signal_transport: HEAT_SIGNAL
+      input_values:
+        http_proxy: { get_param: http_proxy }
+        https_proxy: { get_param: https_proxy }
+        no_proxy: { get_param: no_proxy }
+        USERNAME: { get_param: name }
+        PASSWORD: { get_resource: password }
+        VHOST: { get_param: vhost }
+
+outputs:
+
+  password:
+    value: { get_resource: password }

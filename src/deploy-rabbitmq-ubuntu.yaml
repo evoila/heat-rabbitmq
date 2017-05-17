@@ -1,0 +1,164 @@
+heat_template_version: 2015-04-30
+description: Installs RabbitMQ Cluster
+
+parameters:
+
+  server_map:
+    type: json
+    description: Map of servers to be used with OS::Heat::SoftwareDeploymentGroup
+
+  server_list:
+    type: comma_delimited_list
+    description: list of servers
+
+  server_names:
+    type: comma_delimited_list
+    description: List of server names
+
+  http_proxy:
+    type: string
+    description: "HTTP proxy URL"
+    default: ''
+    hidden: true
+
+  https_proxy:
+    type: string
+    description: "HTTPS proxy URL"
+    default: ''
+    hidden: true
+
+  no_proxy:
+    type: string
+    description: "Exceptions to proxy configuration"
+    default: ''
+
+resources:
+
+  # SOFTWARE CONFIGS
+
+  install_repo:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: script
+      config: { get_file: scripts/ubuntu/0_install_repo.sh }
+      inputs:
+        - name: http_proxy
+        - name: https_proxy
+        - name: noproxy
+
+  install_ubuntu:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: script
+      config: { get_file: scripts/ubuntu/1_install.sh }
+      inputs:
+        - name: http_proxy
+        - name: https_proxy
+        - name: no_proxy
+
+  copy_erlang_cookie:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: script
+      config: { get_file: scripts/ubuntu/2_copy_erlang_cookie.sh }
+      outputs:
+        - name: erlang_cookie
+          type: String
+
+  join_cluster:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: script
+      config: { get_file: scripts/ubuntu/3_join_cluster.sh }
+      inputs:
+        - name: erlang_cookie
+          type: String
+        - name: master_hostname
+          type: String
+
+  enable_plugins:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: script
+      config: { get_file: scripts/ubuntu/4_enable_management_plugin.sh }
+
+  configurations:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: script
+      config: { get_file: scripts/ubuntu/5_configurations.sh }
+      inputs:
+        - name: ADMIN_PASSWORD
+          type: String
+        - name: master_hostname
+          type: String
+
+  # SOFTWARE DEPLOYMENTS
+
+  deploy_install_repo:
+    type: OS::Heat::SoftwareDeploymentGroup
+    properties:
+      config: { get_resource: install_repo }
+      servers: { get_param: server_map }
+      input_values:
+        http_proxy: { get_param: http_proxy }
+        https_proxy: { get_param: http_proxy }
+        no_proxy: { get_param: no_proxy }
+
+  deploy_install_ubuntu:
+    type: OS::Heat::SoftwareDeploymentGroup
+    properties:
+      config: { get_resource: install_ubuntu }
+      servers: { get_param: server_map }
+      input_values:
+        http_proxy: { get_param: http_proxy }
+        https_proxy: { get_param: https_proxy }
+        no_proxy: { get_param: no_proxy }
+    depends_on:
+      - deploy_install_repo
+
+  deploy_copy_erlang_cookie:
+    type: OS::Heat::SoftwareDeployment
+    properties:
+      config: { get_resource: copy_erlang_cookie }
+      server: { get_param: [ server_list, 0 ] }
+    depends_on:
+      - deploy_install_ubuntu
+
+  deploy_join_cluster:
+    type: OS::Heat::SoftwareDeploymentGroup
+    properties:
+      config: { get_resource: join_cluster }
+      servers: { get_param: server_map }
+      input_values:
+        erlang_cookie: { get_attr: [ deploy_copy_erlang_cookie, erlang_cookie ] }
+        master_hostname: { get_param: [ server_names, 0 ] }
+    depends_on:
+      - deploy_copy_erlang_cookie
+
+  deploy_enable_plugins:
+    type: OS::Heat::SoftwareDeploymentGroup
+    properties:
+      config: { get_resource: enable_plugins }
+      servers: { get_param: server_map }
+    depends_on:
+      - deploy_join_cluster
+
+  admin_password:
+    type: OS::Heat::RandomString
+
+  deploy_configurations:
+    type: OS::Heat::SoftwareDeploymentGroup
+    properties:
+      config: { get_resource: configurations }
+      servers: { get_param: server_map }
+      input_values:
+        ADMIN_PASSWORD: { get_resource: admin_password }
+        master_hostname: { get_param: [ server_names, 0 ] }
+    depends_on:
+      - deploy_join_cluster
+
+outputs:
+
+  admin_password:
+    value: { get_resource: admin_password }

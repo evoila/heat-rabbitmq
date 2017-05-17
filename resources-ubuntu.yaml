@@ -1,0 +1,4 @@
+resource_registry:
+  "Evoila::Deployment::RabbitMQ": src/deploy-rabbitmq-ubuntu.yaml
+  "Evoila::Deployment::RabbitMQ::VHost": src/deploy-rabbitmq-vhost.yaml
+  "Evoila::Deployment::RabbitMQ::User": src/deploy-rabbitmq-user.yaml
