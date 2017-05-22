@@ -100,6 +100,7 @@ resources:
     properties:
       config: { get_resource: install_repo }
       servers: { get_param: server_map }
+      signal_transport: HEAT_SIGNAL
       input_values:
         http_proxy: { get_param: http_proxy }
         https_proxy: { get_param: http_proxy }
@@ -110,6 +111,7 @@ resources:
     properties:
       config: { get_resource: install_centos }
       servers: { get_param: server_map }
+      signal_transport: HEAT_SIGNAL
       input_values:
         http_proxy: { get_param: http_proxy }
         https_proxy: { get_param: https_proxy }
@@ -122,6 +124,7 @@ resources:
     properties:
       config: { get_resource: copy_erlang_cookie }
       server: { get_param: [ server_list, 0 ] }
+      signal_transport: HEAT_SIGNAL
     depends_on:
       - deploy_install_centos
 
@@ -130,6 +133,7 @@ resources:
     properties:
       config: { get_resource: join_cluster }
       servers: { get_param: server_map }
+      signal_transport: HEAT_SIGNAL
       input_values:
         erlang_cookie: { get_attr: [ deploy_copy_erlang_cookie, erlang_cookie ] }
         master_hostname: { get_param: [ server_names, 0 ] }
@@ -141,6 +145,7 @@ resources:
     properties:
       config: { get_resource: enable_plugins }
       servers: { get_param: server_map }
+      signal_transport: HEAT_SIGNAL
     depends_on:
       - deploy_join_cluster
 
@@ -152,6 +157,7 @@ resources:
     properties:
       config: { get_resource: configurations }
       servers: { get_param: server_map }
+      signal_transport: HEAT_SIGNAL
       input_values:
         ADMIN_PASSWORD: { get_resource: admin_password }
         master_hostname: { get_param: [ server_names, 0 ] }
