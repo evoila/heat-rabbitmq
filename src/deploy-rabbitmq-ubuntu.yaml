@@ -51,10 +51,6 @@ resources:
     properties:
       group: script
       config: { get_file: scripts/ubuntu/1_install.sh }
-      inputs:
-        - name: http_proxy
-        - name: https_proxy
-        - name: no_proxy
 
   copy_erlang_cookie:
     type: OS::Heat::SoftwareConfig
@@ -110,10 +106,6 @@ resources:
     properties:
       config: { get_resource: install_ubuntu }
       servers: { get_param: server_map }
-      input_values:
-        http_proxy: { get_param: http_proxy }
-        https_proxy: { get_param: https_proxy }
-        no_proxy: { get_param: no_proxy }
     depends_on:
       - deploy_install_repo
 
